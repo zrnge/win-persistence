@@ -4,7 +4,7 @@ A single-page, glassmorphism-styled reference of Windows persistence mechanisms.
 
 ## Live Site
 
-Hosted on GitHub Pages: **https://zrnge.github.io/win-persistence**
+Hosted on GitHub Pages: **https://zrnge.com/win-persistence**
 
 ## Features
 
