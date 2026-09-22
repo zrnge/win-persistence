@@ -47,28 +47,32 @@
     body::before {
       content: "";
       position: fixed;
-      inset: 0;
+      top: -10%;
+      left: -10%;
+      width: 120%;
+      height: 120%;
       z-index: -2;
       background:
-        radial-gradient(circle at 20% 20%, var(--glow-blue), transparent 30%),
-        radial-gradient(circle at 80% 10%, var(--glow-green), transparent 32%),
-        radial-gradient(circle at 75% 85%, var(--glow-red), transparent 30%),
-        radial-gradient(circle at 25% 75%, var(--glow-blue), transparent 28%);
-      animation: aurora 22s ease-in-out infinite alternate;
+        radial-gradient(circle at 20% 20%, var(--glow-blue), transparent 28%),
+        radial-gradient(circle at 80% 10%, var(--glow-green), transparent 30%),
+        radial-gradient(circle at 75% 85%, var(--glow-red), transparent 26%),
+        radial-gradient(circle at 25% 75%, var(--glow-blue), transparent 24%);
+      animation: aurora 28s ease-in-out infinite alternate;
+      will-change: transform, opacity;
     }
     body::after {
       content: "";
       position: fixed;
       inset: 0;
       z-index: -1;
-      backdrop-filter: blur(18px) saturate(135%);
-      -webkit-backdrop-filter: blur(18px) saturate(135%);
-      background: rgba(11, 15, 23, 0.42);
+      backdrop-filter: blur(14px) saturate(120%);
+      -webkit-backdrop-filter: blur(14px) saturate(120%);
+      background: rgba(11, 15, 23, 0.5);
     }
     @keyframes aurora {
-      0% { transform: scale(1) translate(0, 0); opacity: 0.85; }
-      50% { transform: scale(1.12) translate(-1.5%, 1.5%); opacity: 1; }
-      100% { transform: scale(1) translate(1.5%, -1.5%); opacity: 0.9; }
+      0% { transform: scale(1) translate(0, 0); opacity: 0.75; }
+      50% { transform: scale(1.08) translate(-1%, 1%); opacity: 0.95; }
+      100% { transform: scale(1) translate(1%, -1%); opacity: 0.8; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -79,14 +83,14 @@
     header {
       background: linear-gradient(180deg, rgba(22, 27, 34, 0.55), rgba(22, 27, 34, 0.35));
       border-bottom: 1px solid var(--border);
-      padding: clamp(2rem, 6vw, 3.5rem) 1rem;
+      padding: clamp(1.25rem, 3vw, 2rem) 1rem;
       text-align: center;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4);
     }
-    header h1 { margin: 0; color: var(--heading); font-size: clamp(1.8rem, 5vw, 2.6rem); letter-spacing: -0.02em; text-shadow: 0 2px 16px rgba(125, 211, 252, 0.28); }
-    header p { margin: .85rem auto 0; color: var(--muted); font-size: clamp(0.95rem, 2.5vw, 1.1rem); max-width: 640px; }
+    header h1 { margin: 0; color: var(--heading); font-size: clamp(1.5rem, 4vw, 2.2rem); letter-spacing: -0.02em; text-shadow: 0 2px 16px rgba(125, 211, 252, 0.28); }
+    header p { margin: .55rem auto 0; color: var(--muted); font-size: clamp(0.85rem, 2.2vw, 1rem); max-width: 640px; }
     .container { width: min(100% - 1.5rem, 1200px); margin: 0 auto; padding: clamp(1rem, 3vw, 1.5rem) clamp(0.75rem, 3vw, 1rem); }
     .controls {
       display: flex;
@@ -98,8 +102,8 @@
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 18px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(10px) saturate(120%);
+      -webkit-backdrop-filter: blur(10px) saturate(120%);
       box-shadow: 0 8px 32px var(--shadow);
     }
     .controls input, .controls select, .controls button {
@@ -116,6 +120,15 @@
       min-height: 44px;
       min-width: 0;
       flex: 1 1 auto;
+    }
+    .controls input#payloadPath {
+      flex: 2 1 260px;
+      border-color: rgba(125, 211, 252, 0.35);
+      background: rgba(125, 211, 252, 0.08);
+    }
+    .controls input#payloadPath:hover, .controls input#payloadPath:focus {
+      border-color: rgba(125, 211, 252, 0.65);
+      background: rgba(125, 211, 252, 0.12);
     }
     .controls input { max-width: 100%; }
     .controls input:focus, .controls select:focus, .controls button:focus {
@@ -143,19 +156,25 @@
       grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
       gap: 1.25rem;
       container-type: inline-size;
+      contain: layout paint;
     }
     .card {
       background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, var(--card) 100%);
       border: 1px solid var(--border);
       border-radius: 18px;
       padding: clamp(1.1rem, 3vw, 1.35rem);
-      backdrop-filter: blur(20px) saturate(150%);
-      -webkit-backdrop-filter: blur(20px) saturate(150%);
+      backdrop-filter: blur(12px) saturate(140%);
+      -webkit-backdrop-filter: blur(12px) saturate(140%);
       box-shadow: 0 8px 32px var(--shadow);
       transition: transform .25s ease, box-shadow .25s ease, background .25s ease, border-color .25s ease;
       min-width: 0;
       overflow-wrap: anywhere;
       word-break: break-word;
+      contain: layout style paint;
+      content-visibility: auto;
+      contain-intrinsic-size: auto 260px;
+    }
+    .card.animate-in {
       opacity: 0;
       transform: translateY(16px) scale(0.98);
       animation: cardIn .5s ease forwards;
@@ -237,6 +256,13 @@
       overflow: hidden;
       min-height: 0;
     }
+    .example-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      margin-top: 1rem;
+    }
     .example-toggle {
       display: inline-flex;
       align-items: center;
@@ -247,6 +273,7 @@
       user-select: none;
       font-size: .95rem;
       transition: color .2s ease, background .2s ease;
+      margin: 0;
     }
     .example-toggle:hover { color: var(--heading); background: rgba(255,255,255,0.08); }
     .example-toggle .chevron {
@@ -254,6 +281,30 @@
       font-size: 0.75em;
     }
     .example-toggle[aria-expanded="true"] .chevron { transform: rotate(180deg); }
+    .copy-btn {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--muted);
+      padding: .35rem .75rem;
+      font-size: .8rem;
+      cursor: pointer;
+      transition: transform .2s ease, border-color .2s ease, color .2s ease, background .2s ease, box-shadow .2s ease;
+      backdrop-filter: blur(8px);
+      min-height: 32px;
+    }
+    .copy-btn:hover, .copy-btn:focus {
+      border-color: rgba(125, 211, 252, 0.5);
+      color: var(--heading);
+      background: rgba(125, 211, 252, 0.12);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(125, 211, 252, 0.12);
+    }
+    .copy-btn.copied {
+      color: var(--accent);
+      border-color: rgba(74, 222, 128, 0.5);
+      background: rgba(74, 222, 128, 0.12);
+    }
     .empty-state {
       grid-column: 1 / -1;
       text-align: center;
@@ -265,7 +316,7 @@
       backdrop-filter: blur(18px) saturate(140%);
       -webkit-backdrop-filter: blur(18px) saturate(140%);
     }
-    footer { text-align: center; color: var(--muted); font-size: clamp(0.8rem, 2vw, 0.9rem); margin: 2.5rem 0 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 14px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    footer { text-align: center; color: var(--muted); font-size: clamp(0.8rem, 2vw, 0.9rem); margin: 2.5rem 0 1rem; padding: 1rem; background: var(--card); border: 1px solid var(--border); border-radius: 14px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
     footer a { color: #a6d4ff; }
     footer a:hover { color: #bfdbfe; }
     @media (max-width: 640px) {
@@ -297,11 +348,12 @@
 <body>
   <header>
     <h1>Windows Persistence Techniques</h1>
-    <p>A single-page reference of Windows persistence mechanisms, each with a practical example.</p>
   </header>
 
   <div class="container">
     <div class="controls">
+      <label for="payloadPath" class="visually-hidden">Payload path</label>
+      <input type="text" id="payloadPath" placeholder="C:\Tools\payload.exe" value="C:\Tools\payload.exe" aria-label="Payload path">
       <label for="search" class="visually-hidden">Search techniques</label>
       <input type="text" id="search" placeholder="Search techniques..." aria-label="Search techniques">
       <label for="filterPerm" class="visually-hidden">Filter by permissions</label>
@@ -953,14 +1005,40 @@ $Shortcut.Save()`
     const commands = ['REG ADD','REG DELETE','REG QUERY','sc','schtasks','copy','setx','netsh','Start-Process','Add-Content','New-Item','Set-ItemProperty','Out-Null'];
     const keywords = ['true','false','$true','$false','$null','node','Settings','Configuration','ActionAfterReboot','AllowModuleOverWrite','ConfigurationMode','ConfigurationModeFrequencyMins'];
 
-    function renderCards() {
+    function getPayloadPath() {
+      return document.getElementById('payloadPath').value.trim() || 'C:\\Tools\\payload.exe';
+    }
+
+    function applyPayloadPath(text) {
+      const path = getPayloadPath();
+      // Replace common placeholder paths while preserving varied filenames used in examples.
+      return text
+        .replace(/C:\\Tools\\payload\.exe/g, path)
+        .replace(/C:\\Tools\\payload\.cmd/g, path.replace(/\.exe$/i, '.cmd'))
+        .replace(/C:\\Tools\\payload\.scr/g, path.replace(/\.exe$/i, '.scr'))
+        .replace(/C:\\Tools\\evil\.dll/g, path.replace(/\.exe$/i, '.dll'))
+        .replace(/C:\\Tools\\evil\.ocx/g, path.replace(/\.exe$/i, '.ocx'));
+    }
+
+    const highlightCache = new Map();
+
+    function getHighlightedExample(t, i) {
+      const path = getPayloadPath();
+      const cacheKey = i + '|' + path;
+      if (highlightCache.has(cacheKey)) return highlightCache.get(cacheKey);
+      const html = highlight(applyPayloadPath(t.example));
+      highlightCache.set(cacheKey, html);
+      return html;
+    }
+
+    function renderCards(animate = false) {
       const q = document.getElementById('search').value.toLowerCase();
       const perm = document.getElementById('filterPerm').value;
       const launch = document.getElementById('filterLaunch').value;
       const container = document.getElementById('cards');
-      container.innerHTML = '';
 
       let visible = 0;
+      let html = '';
       techniques.forEach((t, i) => {
         const matchSearch = !q || t.title.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q) || t.type.toLowerCase().includes(q);
         const matchPerm = !perm || t.perm.includes(perm);
@@ -968,30 +1046,34 @@ $Shortcut.Save()`
         if (!matchSearch || !matchPerm || !matchLaunch) return;
 
         visible++;
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.dataset.index = i;
         const permClass = t.perm.includes('Admin') ? 'admin' : 'user';
-        card.innerHTML = `
-          <h2>${escapeHtml(t.title)}</h2>
-          <div class="tags">
-            <span class="tag ${permClass}">${escapeHtml(t.perm)}</span>
-            <span class="tag">${escapeHtml(t.type)}</span>
-            <span class="tag">${escapeHtml(t.launch)}</span>
-            <span class="tag">${escapeHtml(t.impact)}</span>
+        const animClass = animate ? ' animate-in' : '';
+        html += `
+          <div class="card${animClass}" data-index="${i}">
+            <h2>${escapeHtml(t.title)}</h2>
+            <div class="tags">
+              <span class="tag ${permClass}">${escapeHtml(t.perm)}</span>
+              <span class="tag">${escapeHtml(t.type)}</span>
+              <span class="tag">${escapeHtml(t.launch)}</span>
+              <span class="tag">${escapeHtml(t.impact)}</span>
+            </div>
+            <p>${escapeHtml(t.desc)}</p>
+            <h3>Location</h3>
+            <ul>${t.location.map(l => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
+            <div class="example-header">
+              <h3 class="example-toggle" data-index="${i}" tabindex="0" role="button" aria-expanded="true">Example <span class="chevron">▼</span></h3>
+              <button class="copy-btn" data-index="${i}" aria-label="Copy example" title="Copy example">Copy</button>
+            </div>
+            <div class="example"><pre><code>${getHighlightedExample(t, i)}</code></pre></div>
           </div>
-          <p>${escapeHtml(t.desc)}</p>
-          <h3>Location</h3>
-          <ul>${t.location.map(l => `<li>${escapeHtml(l)}</li>`).join('')}</ul>
-          <h3 class="example-toggle" data-index="${i}" tabindex="0" role="button" aria-expanded="false">Example <span class="chevron">▼</span></h3>
-          <div class="example hidden"><pre><code>${highlight(t.example)}</code></pre></div>
         `;
-        container.appendChild(card);
       });
 
       if (visible === 0) {
-        container.innerHTML = `<div class="empty-state"><p>No techniques match your filters. Try clearing the search or filters.</p></div>`;
+        html = `<div class="empty-state"><p>No techniques match your filters. Try clearing the search or filters.</p></div>`;
       }
+
+      container.innerHTML = html;
     }
 
     function escapeHtml(text) {
@@ -1103,20 +1185,55 @@ $Shortcut.Save()`
       document.getElementById('search').focus();
     }
 
-    document.getElementById('search').addEventListener('input', renderCards);
-    document.getElementById('filterPerm').addEventListener('change', renderCards);
-    document.getElementById('filterLaunch').addEventListener('change', renderCards);
+    function scheduleRender(animate = false) {
+      if (scheduleRender._id) cancelAnimationFrame(scheduleRender._id);
+      scheduleRender._id = requestAnimationFrame(() => {
+        renderCards(animate);
+        scheduleRender._id = null;
+      });
+    }
+
+    function onFilterChange() {
+      highlightCache.clear();
+      scheduleRender(false);
+    }
+
+    document.getElementById('search').addEventListener('input', onFilterChange);
+    document.getElementById('payloadPath').addEventListener('input', onFilterChange);
+    document.getElementById('filterPerm').addEventListener('change', onFilterChange);
+    document.getElementById('filterLaunch').addEventListener('change', onFilterChange);
 
     document.getElementById('expandAll').addEventListener('click', () => setAllExamples(true));
     document.getElementById('collapseAll').addEventListener('click', () => setAllExamples(false));
     document.getElementById('clearFilters').addEventListener('click', clearFilters);
 
+    async function copyExample(index, btn) {
+      const text = applyPayloadPath(techniques[index].example);
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1500);
+      } catch (err) {
+        btn.textContent = 'Failed';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      }
+    }
+
     document.getElementById('cards').addEventListener('click', e => {
       const toggle = e.target.closest('.example-toggle');
-      if (!toggle) return;
-      const example = toggle.nextElementSibling;
-      const hidden = example.classList.toggle('hidden');
-      toggle.setAttribute('aria-expanded', String(!hidden));
+      if (toggle) {
+        const example = toggle.closest('.card').querySelector('.example');
+        const hidden = example.classList.toggle('hidden');
+        toggle.setAttribute('aria-expanded', String(!hidden));
+        return;
+      }
+      const copyBtn = e.target.closest('.copy-btn');
+      if (copyBtn) {
+        const index = parseInt(copyBtn.dataset.index, 10);
+        copyExample(index, copyBtn);
+      }
     });
     document.getElementById('cards').addEventListener('keydown', e => {
       if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -1126,7 +1243,9 @@ $Shortcut.Save()`
       toggle.click();
     });
 
-    renderCards();
+    // Defer initial render so the shell paints first; animate cards in on first load.
+    const renderIdle = typeof requestIdleCallback === 'function' ? requestIdleCallback : fn => setTimeout(fn, 1);
+    renderIdle(() => renderCards(true), { timeout: 200 });
   </script>
 </body>
 </html>
